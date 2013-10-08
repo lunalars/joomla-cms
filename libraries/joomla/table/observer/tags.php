@@ -41,7 +41,8 @@ class JTableObserverTags extends JTableObserver
 	 * @var    array
 	 * @since  3.1.2
 	 */
-	protected $newTags = array();
+	//protected $newTags = array();
+	protected $newTags = false;
 
 	/**
 	 * Override for postStoreProcess param replaceTags. Set by setNewTagsToAdd, used by onAfterStore
@@ -98,8 +99,17 @@ class JTableObserverTags extends JTableObserver
 	 */
 	public function onBeforeStore($updateNulls, $tableKey)
 	{
+// 		$this->parseTypeAlias();
+// 		$this->tagsHelper->preStoreProcess($this->table);
 		$this->parseTypeAlias();
-		$this->tagsHelper->preStoreProcess($this->table);
+		if (empty($this->table->tagsHelper->tags))
+		{
+			$this->tagsHelper->preStoreProcess($this->table);
+		}
+		else
+		{
+			$this->tagsHelper->preStoreProcess($this->table, (array) $this->table->tagsHelper->tags);
+		}
 	}
 
 	/**
@@ -114,10 +124,24 @@ class JTableObserverTags extends JTableObserver
 	 */
 	public function onAfterStore(&$result)
 	{
+// 		if ($result)
+// 		{
+// 			$result = $this->tagsHelper->postStoreProcess($this->table);
+
+// 			// Restore default values for the optional params:
+// 			$this->newTags = array();
+// 			$this->replaceTags = true;
+// 		}
 		if ($result)
 		{
-			$result = $this->tagsHelper->postStoreProcess($this->table);
-
+			if (empty($this->table->tagsHelper->tags))
+			{
+				$result = $this->tagsHelper->postStoreProcess($this->table);
+			}
+			else
+			{
+				$result = $this->tagsHelper->postStoreProcess($this->table, $this->table->tagsHelper->tags);
+			}
 			// Restore default values for the optional params:
 			$this->newTags = array();
 			$this->replaceTags = true;

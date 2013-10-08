@@ -165,6 +165,15 @@ abstract class JModelAdmin extends JModelForm
 
 		$done = false;
 
+		// Set some needed variables.
+		$this->user = JFactory::getUser();
+		$this->table = $this->getTable();
+		$this->tableClassName = get_class($this->table);
+		$this->contentType = new JUcmType();
+		$this->type = $this->contentType->getTypeByTable($this->tableClassName);
+		$this->type === false?:$typeAlias = $this->type->type_alias;
+		$this->tagsObserver = $this->table->getObserverOfClass('JTableObserverTags');
+		
 		if (!empty($commands['category_id']))
 		{
 			$cmd = JArrayHelper::getValue($commands, 'move_copy', 'c');
@@ -244,20 +253,26 @@ abstract class JModelAdmin extends JModelForm
 	protected function batchAccess($value, $pks, $contexts)
 	{
 		// Set the variables
-		$user = JFactory::getUser();
-		$table = $this->getTable();
+// 		$user = JFactory::getUser();
+// 		$table = $this->getTable();
 
 		foreach ($pks as $pk)
 		{
-			if ($user->authorise('core.edit', $contexts[$pk]))
+			//if ($user->authorise('core.edit', $contexts[$pk]))
+			if ($this->user->authorise('core.edit', $contexts[$pk]))
 			{
-				$table->reset();
-				$table->load($pk);
-				$table->access = (int) $value;
+// 				$table->reset();
+// 				$table->load($pk);
+// 				$table->access = (int) $value;
+				$this->table->reset();
+				$this->table->load($pk);
+				$this->table->access = (int) $value;
 
-				if (!$table->store())
+				static::createTagsHelper($this->tagsObserver, $this->type, $pk, $this->typeAlias, $this->table);
+				
+				if (!$this->table->store())
 				{
-					$this->setError($table->getError());
+					$this->setError($this->table->getError());
 
 					return false;
 				}
@@ -374,11 +389,19 @@ abstract class JModelAdmin extends JModelForm
 				$this->setError($table->getError());
 				return false;
 			}
-
+			
+			if (!empty($tagsObserver) && !empty($type))
+			{
+				$table->tagsHelper = new JHelperTags();
+				$table->tagsHelper->typeAlias = $typeAlias;
+				$table->tagsHelper->tags = explode(',', $table->tagsHelper->getTagIds($pk, $typeAlias));
+			}
+			
 			// Store the row.
 			if (!$table->store())
 			{
-				$this->setError($table->getError());
+				//$this->setError($table->getError());
+				$this->setError($this->table->getError());
 				return false;
 			}
 
@@ -415,15 +438,23 @@ abstract class JModelAdmin extends JModelForm
 
 		foreach ($pks as $pk)
 		{
-			if ($user->authorise('core.edit', $contexts[$pk]))
+			//if ($user->authorise('core.edit', $contexts[$pk]))
+			if ($this->user->authorise('core.edit', $contexts[$pk]))
 			{
-				$table->reset();
-				$table->load($pk);
-				$table->language = $value;
+// 				$table->reset();
+// 				$table->load($pk);
+// 				$table->language = $value;
 
-				if (!$table->store())
+				$this->table->reset();
+				$this->table->load($pk);
+				$this->table->language = $value;
+				
+				static::createTagsHelper($this->tagsObserver, $this->type, $pk, $this->typeAlias, $this->table);
+				
+				if (!$this->table->store())
 				{
-					$this->setError($table->getError());
+					//$this->setError($table->getError());
+					$this->setError($this->table->getError());
 					return false;
 				}
 			}
@@ -1115,7 +1146,7 @@ abstract class JModelAdmin extends JModelForm
 	 */
 	public function saveorder($pks = null, $order = null)
 	{
-		$table = $this->getTable();
+		//$table = $this->getTable();
 		$conditions = array();
 
 		if (empty($pks))
@@ -1138,6 +1169,8 @@ abstract class JModelAdmin extends JModelForm
 			elseif ($table->ordering != $order[$i])
 			{
 				$table->ordering = $order[$i];
+				
+				createTagsHelper($this->tagsObserver, $this->type, $pk, $this->typeAlias, $table);
 
 				if (!$table->store())
 				{
@@ -1178,4 +1211,28 @@ abstract class JModelAdmin extends JModelForm
 
 		return true;
 	}
+	
+	
+	/**
+	 * Method to creat a tags helper to ensure proper management of tags
+	 *
+	 * @param JTableObserverTags $tagsObserver The tags observer for this table
+	 * @param JUcmType $type The type for the table being processed
+	 * @param integer $pk Primary key of the item bing processed
+	 * @param string $typeAlias The type alias for this table
+	 *
+	 * @return void
+	 *
+	 * @since 3.2
+	 */
+	public function createTagsHelper($tagsObserver, $type, $pk, $typeAlias, $table)
+	{
+		if (!empty($tagsObserver) && !empty($type))
+		{
+			$table->tagsHelper = new JHelperTags();
+			$table->tagsHelper->typeAlias = $typeAlias;
+			$table->tagsHelper->tags = explode(',', $table->tagsHelper->getTagIds($pk, $typeAlias));
+		}
+	}
+	
 }

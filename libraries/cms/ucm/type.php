@@ -145,7 +145,42 @@ class JUcmType implements JUcm
 
 		return $type;
 	}
-
+	
+	/**
+	 * Get the Content Type from the table class name
+	 *
+	 * @param string $tableName The table for the type
+	 *
+	 * @return mixed The UCM Type data if found, false if no match is found
+	 *
+	 * @since 3.2
+	 */
+	public function getTypeByTable($tableName)
+	{
+		$query	= $this->db->getQuery(true);
+		$query->select('ct.*');
+		$query->from($this->db->quoteName('#__content_types', 'ct'));
+	
+		//$query->where($this->db->quoteName('ct.type_alias') . ' = ' . (int) $typeAlias);
+		$this->db->setQuery($query);
+	
+		$types = $this->db->loadObjectList();
+	
+		foreach ($types as $type)
+		{
+			$tableFromType = json_decode($type->table);
+			$tableNameFromType = $tableFromType->special->prefix . $tableFromType->special->type;
+	
+			if ($tableNameFromType == $tableName)
+			{
+				return $type;
+			}
+		}
+	
+		return false;
+	
+	}
+	
 	/**
 	 * Retrieves the UCM type ID
 	 *
